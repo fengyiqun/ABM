@@ -57,13 +57,15 @@ public class ABM
     private static Dictionary<int,AO> object_to_ao = new Dictionary<int, AO>();
     private static List<operation> operations_currentframe = new List<operation>();
     private static List<operation> operation_nextframe = new List<operation>();
+    private static Dictionary<string, string[]> abo_to_loadnamt = new Dictionary<string, string[]>();
     private static void DEBUGPRINT(string str)
     {
-
+        UnityEngine.Debug.Log(str);
     }
 
-    private static ABO load_abo(int abi)
+    private static ABO load_abo(int abi,List<int> abistack)
     {
+        abistack.Add(abi);
         ABO abo = null;
         abi_to_abo.TryGetValue(abi, out abo);
         if(abo != null)
@@ -86,9 +88,12 @@ public class ABM
                 DEBUGPRINT("load_abo depend nonexist assetbundle:"+dn);
                 return null;
             }
-
-            load_abo(di);
-            abo.dependencies.Add(di);
+            if (!abistack.Contains(di))
+            {
+                load_abo(di, abistack);
+                abo.dependencies.Add(di);
+            }
+            
         }
 
         var path = Path.Combine(ROOT, name);
@@ -153,7 +158,7 @@ public class ABM
             for (int i = 0; i < asset_child.Length; i++)
             {
                 var s = asset_child[i];
-                DEBUGPRINT("Asset:" + "s" + " -> " + subname);
+                DEBUGPRINT("Asset:" + s + " -> " + subname);
                 abi_of_asset [s] = abi;
             }
 
@@ -189,7 +194,7 @@ public class ABM
 
         if (abi_of_asset .TryGetValue(name, out abi) == false)
             return null;
-        var abo = load_abo(abi);
+        var abo = load_abo(abi,new List<int>());
         if (abo == null)
             return null;
         var asset = abo.ab.LoadAsset<T>(name);
@@ -257,7 +262,7 @@ public class ABM
             return;
         }
 
-        var abo = load_abo(abi);
+        var abo = load_abo(abi,new List<int>());
         if (abo == null)
         {
             DEBUGPRINT("load_scene:"+name+" fail");
@@ -278,7 +283,7 @@ public class ABM
             return null;
         }
 
-        var abo = load_abo(abi);
+        var abo = load_abo(abi,new List<int>());
         if (abo == null)
         {
             return null;
