@@ -89,4 +89,55 @@ public class ABT : UnityEditor.EditorWindow
         build_target(UnityEditor.BuildTarget.StandaloneOSX);
     }
 
+    static Dictionary<string, List<string>> depedencyAssets = new Dictionary<string, List<string>>();
+
+    static void AnalyzAsset(string assetName,HashSet<string> scriptAssetNames)
+    {
+        string[] depedencyAssetNames = UnityEditor.AssetDatabase.GetDependencies(assetName, false);
+        foreach(string dependencyAssetName in depedencyAssetNames)
+        {
+            if (scriptAssetNames != null && scriptAssetNames.Contains(dependencyAssetName))
+            {
+                continue;
+            }
+            if(dependencyAssetName == assetName)
+            {
+                continue;
+            }
+            if (dependencyAssetName.EndsWith(".unity", System.StringComparison.Ordinal))
+            {
+                continue;
+            }
+            if (depedencyAssets.ContainsKey(assetName))
+            {
+                depedencyAssets[assetName].Add(dependencyAssetName);
+            }
+            else
+            {
+                depedencyAssets[assetName] = new List<string>() { dependencyAssetName };
+            }
+        }
+    }
+    [UnityEditor.MenuItem("ABT/SelectAssetDepedencies(Mac)")]
+    static void SelectAssetDependencies()
+    {
+        depedencyAssets.Clear();
+        string[] datas = UnityEditor.AssetDatabase.FindAssets("t:Prefab");
+        foreach(string o in datas)
+        {
+            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(o);
+            Debug.Log(UnityEditor.AssetDatabase.GUIDToAssetPath( o));
+            AnalyzAsset(path,null);
+        }
+        foreach(var value in depedencyAssets)
+        {
+            Debug.Log(">>>>>>>>>>>>>");
+            Debug.Log("key = {0}" + value.Key);
+            for (int i = 0; i < value.Value.Count; i++) {
+                Debug.Log("value:" + value.Value[i]);
+            }
+        }
+
+        
+    }
 }
