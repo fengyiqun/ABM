@@ -129,7 +129,30 @@ public class ABM
             DEBUGPRINT("unload_abo clear abi:"+abi);
         }
     }
+    private static void unload_abonew(int abi)
+    {
+        ABO abo = null;
+        abi_to_abo.TryGetValue(abi, out abo);
+        if (abo == null)
+        {
+            DEBUGPRINT("unload_abo nonexist abo" + abi);
+            return;
+        }
 
+        --abo.refn;
+        DEBUGPRINT("unload_abo abi:" + abi + " ref:" + abo.refn);
+        if (abo.refn <= 0)
+        {
+            var iter = abo.dependencies.GetEnumerator();
+            while (iter.MoveNext())
+            {
+                unload_abonew(iter.Current);
+            }
+            abo.ab.Unload(false);
+            abi_to_abo.Remove(abi);
+            DEBUGPRINT("unload_abo clear abi:" + abi);
+        }
+    }
     public static int start(string path)
     {
         ctx = new initctx();
@@ -217,6 +240,28 @@ public class ABM
             DEBUGPRINT("ref_asset instance id:"+instance_id+"ref count:"+ao.refn);
         }
         System.Diagnostics.Debug.Assert(ao!= null);
+        return;
+    }
+
+    static void unload_asset(AO ao)
+    {
+        Resources.UnloadAsset((GameObject)ao.asset);
+    }
+
+    public static void unref_assetnew(int instance_id)
+    {
+        AO ao = null;
+        if (object_to_ao.TryGetValue(instance_id, out ao) == false)
+            return;
+        --ao.refn;
+        DEBUGPRINT("unref_asset instance id:" + instance_id + "ref count:" + ao.refn);
+        if (ao.refn <= 0)
+        {
+            unload_asset(ao);
+            unload_abonew(ao.abi);
+            name_to_ao.Remove(ao.name);
+            object_to_ao.Remove(instance_id);
+        }
         return;
     }
 

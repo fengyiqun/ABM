@@ -118,26 +118,26 @@ public class ABT : UnityEditor.EditorWindow
             }
         }
     }
+
+    class AssetDepedency
+    {
+        public string AssetName { get; set; }
+        public List<string> AssetDepedencyList { get; set; }
+    }
     [UnityEditor.MenuItem("ABT/SelectAssetDepedencies(Mac)")]
     static void SelectAssetDependencies()
     {
         depedencyAssets.Clear();
-        string[] datas = UnityEditor.AssetDatabase.FindAssets("t:Prefab");
+        string[] datas = UnityEditor.AssetDatabase.FindAssets("t:Prefab,t:material");
         foreach(string o in datas)
         {
             string path = UnityEditor.AssetDatabase.GUIDToAssetPath(o);
             Debug.Log(UnityEditor.AssetDatabase.GUIDToAssetPath( o));
             AnalyzAsset(path,null);
         }
-        foreach(var value in depedencyAssets)
-        {
-            Debug.Log(">>>>>>>>>>>>>");
-            Debug.Log("key = {0}" + value.Key);
-            for (int i = 0; i < value.Value.Count; i++) {
-                Debug.Log("value:" + value.Value[i]);
-            }
-        }
-
-        
+        var writer = new YamlDotNet.Serialization.Serializer();
+        string str = writer.Serialize(depedencyAssets);
+        Debug.Log(str);
+        System.IO.File.WriteAllText(getconfpath(), str);
     }
 }
