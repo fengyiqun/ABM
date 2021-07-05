@@ -10,6 +10,7 @@ public class ABM
     {
         public int abi = -1;
         public int refn = 1;
+        public bool isLoad = false;
         public AssetBundle ab = null;
         public HashSet<int> dependencies = new HashSet<int>();
     }
@@ -52,12 +53,21 @@ public class ABM
     private static Dictionary<int, string> abi_to_name = new Dictionary<int, string>();
     private static Dictionary<string, int> name_to_abi = new Dictionary<string, int>();
     private static Dictionary<int, ABO> abi_to_abo = new Dictionary<int, ABO>();
+    private static Dictionary<int, ABO> abi_to_abo_unload = new Dictionary<int, ABO>();
     private static Dictionary<string,int> abi_of_asset = new Dictionary<string, int>();
     private static Dictionary<string,AO> name_to_ao = new Dictionary<string, AO>();
     private static Dictionary<int,AO> object_to_ao = new Dictionary<int, AO>();
     private static List<operation> operations_currentframe = new List<operation>();
     private static List<operation> operation_nextframe = new List<operation>();
     private static Dictionary<string, string[]> abo_to_loadnamt = new Dictionary<string, string[]>();
+    private static Dictionary<string, List<string>> asset_to_depedencyAssets = new Dictionary<string, List<string>>();
+    static string getconfpath()
+    {
+        var path = Application.streamingAssetsPath + "/ABT.yaml";
+        Debug.Log("ABT configPaht:" + path);
+        return path;
+    }
+
     private static void DEBUGPRINT(string str)
     {
         UnityEngine.Debug.Log(str);
@@ -105,6 +115,37 @@ public class ABM
         return abo;
     }
 
+    private static ABO load_abonew(int abi, List<int> abistack)
+    {
+        abistack.Add(abi);
+        ABO abo = null;
+        abi_to_abo.TryGetValue(abi, out abo);
+        if (abo != null)
+        {
+            abo.refn++;
+            DEBUGPRINT("load_abo abi:" + abi + " ref:" + abo.refn);
+            return abo;
+        }
+        abi_to_abo_unload.TryGetValue(abi, out abo);
+        if(abo != null)
+        {
+            abo.refn++;
+            abi_to_abo_unload.Remove(abi);
+            DEBUGPRINT("load_abo back abi:" + abi + " ref:" + abo.refn);
+            return abo;
+        }
+        abo = new ABO();
+        abi_to_abo[abi] = abo;
+        var name = abi_to_name[abi];
+        var path = Path.Combine(ROOT, name);
+        DEBUGPRINT("load_abo depend assetbundle:" + path);
+        var ab = AssetBundle.LoadFromFile(path);
+        System.Diagnostics.Debug.Assert(ab != null);
+        abo.isLoad = true;
+        abo.ab = ab;
+        abo.abi = abi;
+        return abo;
+    }
     private static void unload_abo(int abi)
     {
         ABO abo = null;
@@ -138,21 +179,30 @@ public class ABM
             DEBUGPRINT("unload_abo nonexist abo" + abi);
             return;
         }
-
-        --abo.refn;
-        DEBUGPRINT("unload_abo abi:" + abi + " ref:" + abo.refn);
-        if (abo.refn <= 0)
+        bool unload = true;
+        foreach(var value in abi_of_asset)
         {
-            var iter = abo.dependencies.GetEnumerator();
-            while (iter.MoveNext())
+            if(value.Value == abi)
             {
-                unload_abonew(iter.Current);
+                AO ao = null;
+                if(name_to_ao.TryGetValue(value.Key,out ao))
+                {
+                    if(ao.refn > 0)
+                    {
+                        unload = false;
+                    }
+                }
             }
-            abo.ab.Unload(false);
+        }
+        DEBUGPRINT("unload_abo abi:" + abi + " ref:" + abo.refn);
+        if (unload)
+        {
+            abi_to_abo_unload[abi] = abo;
             abi_to_abo.Remove(abi);
             DEBUGPRINT("unload_abo clear abi:" + abi);
         }
     }
+   
     public static int start(string path)
     {
         ctx = new initctx();
@@ -163,7 +213,15 @@ public class ABM
         ROOT = path;
         ctx.i = 0;
         ctx.files = MANIFEST.GetAllAssetBundles();
+        InitAssetToDepedencyAssets();
         return ctx.files.Length;
+    }
+
+    static void InitAssetToDepedencyAssets()
+    {
+        var str = System.IO.File.ReadAllText(getconfpath());
+        var reader = new YamlDotNet.Serialization.Deserializer();
+        asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
     }
 
     public static bool init()
@@ -202,6 +260,8 @@ public class ABM
         }
     }
 
+
+
     public static T load_asset<T>(string name_) where T : Object
     {
         int abi = 0;
@@ -231,6 +291,82 @@ public class ABM
         return asset;
     }
 
+     static void load_depedencyAssets(string name_)
+    {
+        
+
+        List<string> depedencyAssets = new List<string>();
+        if(asset_to_depedencyAssets.TryGetValue(name_,out depedencyAssets) == false)
+        {
+            DEBUGPRINT("loaddepedencyAssets Fail asset = " + name_);
+            return;
+        }
+        for(int i  = 0; i < depedencyAssets.Count; i++)
+        {
+            var name = depedencyAssets[i].ToLower();
+            int abi = 0;
+            AO ao = null;
+            if(name_to_ao.TryGetValue(name,out ao))
+            {
+                DEBUGPRINT("load_asset name:" + name + " hit");
+                ++ao.refn;
+            }
+            if(abi_of_asset.TryGetValue(name,out abi) == false)
+            {
+                DEBUGPRINT("Find abi Fail asset = " + name);
+                return;
+            }
+            var abo = load_abo(abi, new List<int>());
+            if(abo == null)
+            {
+                DEBUGPRINT("load abo is Fail asset : " + name);
+                return;
+            }
+            var asset = abo.ab.LoadAsset(name);
+            if(asset != null)
+            {
+                ao = new AO(abi, name);
+                ao.asset = asset;
+                name_to_ao[name] = ao;
+                object_to_ao[asset.GetInstanceID()] = ao;
+            }
+        }
+
+    }
+
+    public static T load_assetNew<T>(string name_) where T : Object
+    {
+        int abi = 0;
+        AO ao = null;
+        var name = name_.ToLower();
+        DEBUGPRINT("ABM:load_asset:" + name);
+        if(name_to_ao.TryGetValue(name_,out ao))
+        {
+            DEBUGPRINT("load_asset name:" + name + " hit");
+            ++ao.refn;
+            return (T)ao.asset;
+        }
+        if (abi_of_asset.TryGetValue(name, out abi) == false)
+            return null;
+        var abo = load_abonew (abi, new List<int>());
+        if (abo == null)
+            return null;
+        load_depedencyAssets(name);
+        var asset = abo.ab.LoadAsset<T>(name);
+        if (asset != null)
+        {
+            ao = new AO(abi, name);
+            ao.asset = asset;
+            name_to_ao[name] = ao;
+            object_to_ao[asset.GetInstanceID()] = ao;
+        }
+        return asset;
+
+    }
+
+
+
+
     public static void ref_asset(int instance_id)
     {
         AO ao = null;
@@ -245,8 +381,10 @@ public class ABM
 
     static void unload_asset(AO ao)
     {
-        Resources.UnloadAsset((GameObject)ao.asset);
+        Resources.UnloadAsset((Object)ao.asset);
     }
+
+    
 
     public static void unref_assetnew(int instance_id)
     {
@@ -296,6 +434,16 @@ public class ABM
     public static void unload_asset(Object obj)
     {
         unref_asset(obj.GetInstanceID());
+    }
+
+    public static void unLoad_assetbundle()
+    {
+        foreach(var value in abi_to_abo_unload)
+        {
+            value.Value.ab.Unload(true);
+            value.Value.isLoad = false;
+        }
+        abi_to_abo_unload.Clear();
     }
 
     public static void load_scene(string name, LoadSceneMode mode)
