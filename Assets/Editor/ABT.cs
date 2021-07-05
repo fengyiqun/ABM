@@ -20,7 +20,7 @@ public class ABT : UnityEditor.EditorWindow
     }
     static string getconfpath()
     {
-        var path = "ProjectSettings/ABT.yaml";
+        var path = OUTPUT_PATH+"/ABT.yaml";
         Debug.Log("ABT configPaht:" + path);
         return path;
     }
@@ -88,7 +88,11 @@ public class ABT : UnityEditor.EditorWindow
     static void build_mac() {
         build_target(UnityEditor.BuildTarget.StandaloneOSX);
     }
-
+    [UnityEditor.MenuItem("ABT/Build AssetBundle(PC)")]
+    static void build_pc()
+    {
+        build_target(UnityEditor.BuildTarget.StandaloneWindows64);
+    }
     static Dictionary<string, List<string>> depedencyAssets = new Dictionary<string, List<string>>();
 
     static void AnalyzAsset(string assetName,HashSet<string> scriptAssetNames)
@@ -124,7 +128,7 @@ public class ABT : UnityEditor.EditorWindow
         public string AssetName { get; set; }
         public List<string> AssetDepedencyList { get; set; }
     }
-    [UnityEditor.MenuItem("ABT/SelectAssetDepedencies(Mac)")]
+    [UnityEditor.MenuItem("ABT/SelectAssetDepedencies")]
     static void SelectAssetDependencies()
     {
         depedencyAssets.Clear();
