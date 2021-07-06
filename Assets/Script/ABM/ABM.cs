@@ -62,10 +62,18 @@ public class ABM
     private static Dictionary<string, List<string>> asset_to_depedencyAssets = new Dictionary<string, List<string>>();
     static string getconfpath()
     {
-        var path = Application.streamingAssetsPath + "/ABT.yaml";
-        Debug.Log("ABT configPaht:" + path);
+        var path = "";
+#if UNITY_EDITOR || UNITY_STANDALONE_OSX || UNITY_STANDALONE_WIN
+        path =  Application.dataPath + "/StreamingAssets/ABT.yaml";
+#elif UNITY_ANDROID
+        path = "jar:file://" + Application.dataPath + "!/assets/ABT.yaml";
+#elif UNITY_IOS
+         path =  Application.dataPath + "/Raw/ABT.yaml";
+#endif
         return path;
     }
+    
+    
 
     private static void DEBUGPRINT(string str)
     {

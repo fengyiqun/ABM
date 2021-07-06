@@ -93,6 +93,11 @@ public class ABT : UnityEditor.EditorWindow
     {
         build_target(UnityEditor.BuildTarget.StandaloneWindows64);
     }
+    [UnityEditor.MenuItem("ABT/Build AssetBundle(AND)")]
+    static void build_and()
+    {
+        build_target(UnityEditor.BuildTarget.Android);
+    }
     static Dictionary<string, List<string>> depedencyAssets = new Dictionary<string, List<string>>();
 
     static void AnalyzAsset(string assetName,HashSet<string> scriptAssetNames)
