@@ -19,7 +19,7 @@ public class ABM
         public string name = null;
         public int abi = -1;
         public int refn = 1;
-        public object asset = null;
+        public Object asset = null;
         public AO(int abi,string name)
         {
             this.abi = abi;
@@ -53,7 +53,6 @@ public class ABM
     private static Dictionary<int, string> abi_to_name = new Dictionary<int, string>();
     private static Dictionary<string, int> name_to_abi = new Dictionary<string, int>();
     private static Dictionary<int, ABO> abi_to_abo = new Dictionary<int, ABO>();
-    private static Dictionary<int, ABO> abi_to_abo_unload = new Dictionary<int, ABO>();
     private static Dictionary<string,int> abi_of_asset = new Dictionary<string, int>();
     private static Dictionary<string,AO> name_to_ao = new Dictionary<string, AO>();
     private static Dictionary<int,AO> object_to_ao = new Dictionary<int, AO>();
@@ -122,16 +121,7 @@ public class ABM
         abi_to_abo.TryGetValue(abi, out abo);
         if (abo != null)
         {
-            abo.refn++;
             DEBUGPRINT("load_abo abi:" + abi + " ref:" + abo.refn);
-            return abo;
-        }
-        abi_to_abo_unload.TryGetValue(abi, out abo);
-        if(abo != null)
-        {
-            abo.refn++;
-            abi_to_abo_unload.Remove(abi);
-            DEBUGPRINT("load_abo back abi:" + abi + " ref:" + abo.refn);
             return abo;
         }
         abo = new ABO();
@@ -197,8 +187,7 @@ public class ABM
         DEBUGPRINT("unload_abo abi:" + abi + " ref:" + abo.refn);
         if (unload)
         {
-            abi_to_abo_unload[abi] = abo;
-            abi_to_abo.Remove(abi);
+            abo.isLoad = false;
             DEBUGPRINT("unload_abo clear abi:" + abi);
         }
     }
@@ -323,6 +312,7 @@ public class ABM
             }
             load_depedencyAssets(name);
             var asset = abo.ab.LoadAsset(name);
+            abo.isLoad = true;
             if(asset != null)
             {
                 ao = new AO(abi, name);
@@ -353,6 +343,7 @@ public class ABM
             return null;
         load_depedencyAssets(name);
         var asset = abo.ab.LoadAsset<T>(name);
+        abo.isLoad = true;
         if (asset != null)
         {
             ao = new AO(abi, name);
@@ -397,9 +388,9 @@ public class ABM
                     --depedencyao.refn;
                     if (depedencyao.refn <= 0)
                     {
-                        unref_assetdepedency(depedencyao);
                         unload_asset(depedencyao);
                         unload_abonew(ao.abi);
+                        unref_assetdepedency(depedencyao);
                         name_to_ao.Remove(ao.name);
                     }
                 }
@@ -441,11 +432,11 @@ public class ABM
 
     public static Object load_asset(string name)
     {
-        if (name.EndsWith(".png") || name.EndsWith(".jpg"))
+        /*if (name.EndsWith(".png") || name.EndsWith(".jpg"))
         {
             return load_asset<Sprite>(name);
         }
-        else
+        else*/
         {
             return load_asset<Object>(name);
         }
@@ -473,12 +464,22 @@ public class ABM
     }
     public static void unLoad_assetbundle()
     {
-        foreach(var value in abi_to_abo_unload)
+        List<int> removeabi = new List<int>();
+        foreach(var value in abi_to_abo)
         {
-            value.Value.ab.Unload(true);
-            value.Value.isLoad = false;
+            if (!value.Value.isLoad)
+            {
+                DEBUGPRINT("Unload abname:" + value.Value.ab.name);
+                removeabi.Add(value.Key);
+                value.Value.ab.Unload(false);
+               
+            }
         }
-        abi_to_abo_unload.Clear();
+
+        for (int i = 0; i < removeabi.Count; i++)
+        {
+            abi_to_abo.Remove(removeabi[i]);
+        }
     }
 
     public static void load_scene(string name, LoadSceneMode mode)
@@ -557,5 +558,10 @@ public class ABM
         }
         exec.Clear();
         operation_nextframe = exec;
+    }
+
+    public static void unload_unusedassets()
+    {
+        Resources.UnloadUnusedAssets();
     }
 }

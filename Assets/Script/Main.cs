@@ -43,18 +43,31 @@ public class Main : MonoBehaviour
 
     public void LoadAsset()
     {
-        insobj = GameObject.Instantiate(obj);
-        insobj.transform.SetParent(ROOT.transform);
+        if (obj != null)
+        {
+            insobj = GameObject.Instantiate(obj);
+            insobj.transform.SetParent(ROOT.transform);
+        }
     }
 
     public void UnLoadAsset()
     {
+
         GameObject.Destroy(insobj);
-        ABM.unload_assetnew(obj);
+        if (obj != null)
+        {
+            ABM.unload_assetnew(obj);
+            obj = null;
+        }
     }
 
     public void UnLoadAB()
     {
         ABM.unLoad_assetbundle();
+    }
+
+    public void UnloadUnusedAssets()
+    {
+        ABM.unload_unusedassets();
     }
 }
