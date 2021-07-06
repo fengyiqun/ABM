@@ -293,8 +293,6 @@ public class ABM
 
      static void load_depedencyAssets(string name_)
     {
-        
-
         List<string> depedencyAssets = new List<string>();
         if(asset_to_depedencyAssets.TryGetValue(name_,out depedencyAssets) == false)
         {
@@ -310,18 +308,20 @@ public class ABM
             {
                 DEBUGPRINT("load_asset name:" + name + " hit");
                 ++ao.refn;
+                return;
             }
             if(abi_of_asset.TryGetValue(name,out abi) == false)
             {
                 DEBUGPRINT("Find abi Fail asset = " + name);
                 return;
             }
-            var abo = load_abo(abi, new List<int>());
+            var abo = load_abonew(abi, new List<int>());
             if(abo == null)
             {
                 DEBUGPRINT("load abo is Fail asset : " + name);
                 return;
             }
+            load_depedencyAssets(name);
             var asset = abo.ab.LoadAsset(name);
             if(asset != null)
             {
@@ -361,7 +361,6 @@ public class ABM
             object_to_ao[asset.GetInstanceID()] = ao;
         }
         return asset;
-
     }
 
 
@@ -381,11 +380,32 @@ public class ABM
 
     static void unload_asset(AO ao)
     {
+        DEBUGPRINT("UnloadAsset Name:"+ao.name);
         Resources.UnloadAsset((Object)ao.asset);
     }
 
-    
-
+    static void unref_assetdepedency(AO ao)
+    {
+        List<string> depedencylist = new List<string>();
+        if (asset_to_depedencyAssets.TryGetValue(ao.name, out depedencylist))
+        {
+            AO depedencyao = null;
+            for (int i = 0; i < depedencylist.Count; i++)
+            {
+                if (name_to_ao.TryGetValue(depedencylist[i], out depedencyao))
+                {
+                    --depedencyao.refn;
+                    if (depedencyao.refn <= 0)
+                    {
+                        unref_assetdepedency(depedencyao);
+                        unload_asset(depedencyao);
+                        unload_abonew(ao.abi);
+                        name_to_ao.Remove(ao.name);
+                    }
+                }
+            }
+        }
+    }
     public static void unref_assetnew(int instance_id)
     {
         AO ao = null;
@@ -395,7 +415,7 @@ public class ABM
         DEBUGPRINT("unref_asset instance id:" + instance_id + "ref count:" + ao.refn);
         if (ao.refn <= 0)
         {
-            unload_asset(ao);
+            unref_assetdepedency(ao);
             unload_abonew(ao.abi);
             name_to_ao.Remove(ao.name);
             object_to_ao.Remove(instance_id);
@@ -431,11 +451,26 @@ public class ABM
         }
     }
 
+    public static Object load_assetnew(string name)
+    {
+        if (name.EndsWith(".png") || name.EndsWith(".jpg"))
+        {
+            return load_assetNew<Sprite>(name);
+        }
+        else
+        {
+            return load_assetNew<Object>(name);
+        }
+    }
     public static void unload_asset(Object obj)
     {
         unref_asset(obj.GetInstanceID());
     }
 
+    public static void unload_assetnew(Object obj)
+    {
+        unref_assetnew(obj.GetInstanceID());
+    }
     public static void unLoad_assetbundle()
     {
         foreach(var value in abi_to_abo_unload)

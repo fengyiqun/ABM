@@ -77,7 +77,7 @@ public class ABT : UnityEditor.EditorWindow
         }
         else
         {
-            check_modified(output);
+            //check_modified(output);
         }
         System.IO.Directory.CreateDirectory(output);
         UnityEditor.BuildPipeline.BuildAssetBundles(output, option, target);
@@ -112,13 +112,16 @@ public class ABT : UnityEditor.EditorWindow
             {
                 continue;
             }
-            if (depedencyAssets.ContainsKey(assetName))
+
+            string assetName_ = assetName.ToLower();
+            string depenname_ = dependencyAssetName.ToLower();
+            if (depedencyAssets.ContainsKey(assetName_))
             {
-                depedencyAssets[assetName].Add(dependencyAssetName);
+                depedencyAssets[assetName_].Add(depenname_);
             }
             else
             {
-                depedencyAssets[assetName] = new List<string>() { dependencyAssetName };
+                depedencyAssets[assetName_] = new List<string>() { depenname_ };
             }
         }
     }

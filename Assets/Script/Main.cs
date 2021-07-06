@@ -6,6 +6,8 @@ public class Main : MonoBehaviour
 {
     public GameObject ROOT;
     GameObject obj = null;
+
+    private GameObject insobj = null;
     // Start is called before the first frame update
     void Start()
     {
@@ -21,17 +23,38 @@ public class Main : MonoBehaviour
     void Update()
     {
         if(Input.GetKey(KeyCode.A)){
-            obj = ABM.load_asset("assets/art/c.prefab") as GameObject;
+          
             
         }
         if (Input.GetKey(KeyCode.C))
         {
-            GameObject go = GameObject.Instantiate(obj);
-            go.transform.SetParent(ROOT.transform);
+           
         }
         if (Input.GetKey(KeyCode.D))
         {
-            ABM.unload_asset(obj);
+            
         }
+    }
+
+    public void LoadAB()
+    {
+        obj = ABM.load_assetnew("assets/art/b.prefab") as GameObject;
+    }
+
+    public void LoadAsset()
+    {
+        insobj = GameObject.Instantiate(obj);
+        insobj.transform.SetParent(ROOT.transform);
+    }
+
+    public void UnLoadAsset()
+    {
+        GameObject.Destroy(insobj);
+        ABM.unload_assetnew(obj);
+    }
+
+    public void UnLoadAB()
+    {
+        ABM.unLoad_assetbundle();
     }
 }
