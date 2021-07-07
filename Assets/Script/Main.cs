@@ -13,6 +13,7 @@ public class Main : MonoBehaviour
     {
         string path = Application.streamingAssetsPath;
         ABM.start(path + "/MAIN.bundle");
+        StartCoroutine(DownloadFile1(ABM.getconfpath()));
         while (ABM.init()) ;
 
        
@@ -36,6 +37,41 @@ public class Main : MonoBehaviour
         }
     }
 
+    
+    static void InitAssetToDepedencyAssets()
+    {
+        string str = ""; 
+#if UNITY_ANDROID
+        
+#else
+        str = System.IO.File.ReadAllText(getconfpath());
+        var reader = new YamlDotNet.Serialization.Deserializer();
+        asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
+#endif
+    }
+
+
+    IEnumerator DownloadFile1(string url)
+    {
+        UnityEngine.Networking.UnityWebRequest request = UnityEngine.Networking.UnityWebRequest.Get(url);
+        request.timeout = 10;
+        yield return request.SendWebRequest();
+        if (request.error != null)
+        {
+            Debug.LogErrorFormat("加载出错： {0}, url is: {1}", request.error, url);
+            request.Dispose();
+            yield break;
+        }
+
+        if (request.downloadHandler.isDone)
+        {
+            string str = request.downloadHandler.text;
+            var reader = new YamlDotNet.Serialization.Deserializer();
+            ABM.asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
+            yield break;
+        }
+    }
+
     public void LoadAB()
     {
         obj = ABM.load_assetnew("assets/art/b.prefab") as GameObject;
@@ -48,6 +84,11 @@ public class Main : MonoBehaviour
             insobj = GameObject.Instantiate(obj);
             insobj.transform.SetParent(ROOT.transform);
         }
+    }
+
+    public void DeleteAsset()
+    {
+        GameObject.DestroyImmediate(obj,true);
     }
 
     public void UnLoadAsset()

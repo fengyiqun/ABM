@@ -60,8 +60,8 @@ public class ABM
     private static List<operation> operations_currentframe = new List<operation>();
     private static List<operation> operation_nextframe = new List<operation>();
     private static Dictionary<string, string[]> abo_to_loadnamt = new Dictionary<string, string[]>();
-    private static Dictionary<string, List<string>> asset_to_depedencyAssets = new Dictionary<string, List<string>>();
-    static string getconfpath()
+    public static Dictionary<string, List<string>> asset_to_depedencyAssets = new Dictionary<string, List<string>>();
+    public static string getconfpath()
     {
         var path = "";
 #if UNITY_EDITOR || UNITY_STANDALONE_OSX || UNITY_STANDALONE_WIN
@@ -211,39 +211,11 @@ public class ABM
         ROOT = path;
         ctx.i = 0;
         ctx.files = MANIFEST.GetAllAssetBundles();
-        InitAssetToDepedencyAssets();
         return ctx.files.Length;
     }
 
-    static void InitAssetToDepedencyAssets()
-    {
-        string str = ""; 
-#if UNITY_ANDROID
-        UnityWebRequest request = UnityWebRequest.Get(getconfpath());
-        request.SendWebRequest();
-        while (true)
-        {
-            if (request.result != UnityWebRequest.Result.Success)
-            {
-                return;
-            }
-            else
-            {
-                if (request.downloadHandler.isDone)
-                {
-                    str = request.downloadHandler.text;
-                    var reader = new YamlDotNet.Serialization.Deserializer();
-                    asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
-                    return;
-                }
-            }
-        }
-#else
-        str = System.IO.File.ReadAllText(getconfpath());
-        var reader = new YamlDotNet.Serialization.Deserializer();
-        asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
-        #endif
-    }
+   
+   
 
     public static bool init()
     {
