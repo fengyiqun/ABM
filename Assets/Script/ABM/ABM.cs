@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 
 public class ABM 
@@ -216,9 +217,32 @@ public class ABM
 
     static void InitAssetToDepedencyAssets()
     {
-        var str = System.IO.File.ReadAllText(getconfpath());
+        string str = ""; 
+#if UNITY_ANDROID
+        UnityWebRequest request = UnityWebRequest.Get(getconfpath());
+        request.SendWebRequest();
+        while (true)
+        {
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                return;
+            }
+            else
+            {
+                if (request.downloadHandler.isDone)
+                {
+                    str = request.downloadHandler.text;
+                    var reader = new YamlDotNet.Serialization.Deserializer();
+                    asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
+                    return;
+                }
+            }
+        }
+#else
+        str = System.IO.File.ReadAllText(getconfpath());
         var reader = new YamlDotNet.Serialization.Deserializer();
         asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
+        #endif
     }
 
     public static bool init()
