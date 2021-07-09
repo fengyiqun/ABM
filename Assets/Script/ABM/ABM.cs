@@ -5,8 +5,15 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 
-public class ABM 
+public class ABM
 {
+    public delegate void LoadAssetSuccessCallback(string assetName, Object asset, float duration, object userData);
+
+    public delegate void LoadAssetFailureCallback(string assetName, string errorMessage, object userData);
+
+
+    private LoadAssetSuccessCallback m_LoadAssetSuccessCallback;
+    private LoadAssetFailureCallback m_LoadAssetFailureCallback;
     private class ABO
     {
         public int abi = -1;
@@ -27,6 +34,12 @@ public class ABM
             this.name = name;
         }
     }
+
+    private class OBJ
+    {
+        
+    }
+    
     private class initctx
     {
         public int i;
@@ -61,6 +74,9 @@ public class ABM
     private static List<operation> operation_nextframe = new List<operation>();
     private static Dictionary<string, string[]> abo_to_loadnamt = new Dictionary<string, string[]>();
     public static Dictionary<string, List<string>> asset_to_depedencyAssets = new Dictionary<string, List<string>>();
+    static Dictionary<int,ABO> loadingabo = new Dictionary<int,ABO>();
+    
+    
     public static string getconfpath()
     {
         var path = "";
@@ -123,9 +139,8 @@ public class ABM
         return abo;
     }
 
-    private static ABO load_abonew(int abi, List<int> abistack)
+    private static ABO load_abonew(int abi)
     {
-        abistack.Add(abi);
         ABO abo = null;
         abi_to_abo.TryGetValue(abi, out abo);
         if (abo != null)
@@ -193,7 +208,7 @@ public class ABM
                 }
             }
         }
-        DEBUGPRINT("unload_abo abi:" + abi + " ref:" + abo.refn);
+        DEBUGPRINT("unload_abo abi:" + abi + " unload: " + unload);
         if (unload)
         {
             abo.isLoad = false;
@@ -308,22 +323,20 @@ public class ABM
                 DEBUGPRINT("Find abi Fail asset = " + name);
                 return;
             }
-            var abo = load_abonew(abi, new List<int>());
+            var abo = load_abonew(abi);
             if(abo == null)
             {
                 DEBUGPRINT("load abo is Fail asset : " + name);
                 return;
             }
             load_depedencyAssets(name);
-            var asset = abo.ab.LoadAsset(name);
+            //var asset = abo.ab.LoadAsset(name);
             abo.isLoad = true;
-            if(asset != null)
-            {
-                ao = new AO(abi, name);
-                ao.asset = asset;
-                name_to_ao[name] = ao;
-                object_to_ao[asset.GetInstanceID()] = ao;
-            }
+            
+            ao = new AO(abi, name);
+            ao.asset = null;
+            name_to_ao[name] = ao;
+            //object_to_ao[asset.GetInstanceID()] = ao;
         }
 
     }
@@ -342,7 +355,7 @@ public class ABM
         }
         if (abi_of_asset.TryGetValue(name, out abi) == false)
             return null;
-        var abo = load_abonew (abi, new List<int>());
+        var abo = load_abonew (abi);
         if (abo == null)
             return null;
         load_depedencyAssets(name);
@@ -392,7 +405,7 @@ public class ABM
                     --depedencyao.refn;
                     if (depedencyao.refn <= 0)
                     {
-                        unload_asset(depedencyao);
+                        //unload_asset(depedencyao);
                         unload_abonew(ao.abi);
                         unref_assetdepedency(depedencyao);
                         name_to_ao.Remove(ao.name);
@@ -475,7 +488,7 @@ public class ABM
             {
                 DEBUGPRINT("Unload abname:" + value.Value.ab.name);
                 removeabi.Add(value.Key);
-                value.Value.ab.Unload(false);
+                value.Value.ab.Unload(true);
                
             }
         }

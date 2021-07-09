@@ -13,7 +13,7 @@ public class Main : MonoBehaviour
     {
         string path = Application.streamingAssetsPath;
         ABM.start(path + "/MAIN.bundle");
-        StartCoroutine(DownloadFile1(ABM.getconfpath()));
+        InitAssetToDepedencyAssets();
         while (ABM.init()) ;
 
        
@@ -38,15 +38,15 @@ public class Main : MonoBehaviour
     }
 
     
-    static void InitAssetToDepedencyAssets()
+    void InitAssetToDepedencyAssets()
     {
         string str = ""; 
 #if UNITY_ANDROID
-        
+        StartCoroutine(DownloadFile1(ABM.getconfpath()));
 #else
-        str = System.IO.File.ReadAllText(getconfpath());
+        str = System.IO.File.ReadAllText(ABM.getconfpath());
         var reader = new YamlDotNet.Serialization.Deserializer();
-        asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
+        ABM.asset_to_depedencyAssets = reader.Deserialize<Dictionary<string, List<string>>>(str);
 #endif
     }
 
