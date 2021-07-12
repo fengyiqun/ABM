@@ -21,6 +21,7 @@ public class ABM
         public bool isLoad = false;
         public AssetBundle ab = null;
         public HashSet<int> dependencies = new HashSet<int>();
+        public HashSet<int> objs = new HashSet<int>();
     }
     private class AO
     {
@@ -37,7 +38,44 @@ public class ABM
 
     private class OBJ
     {
-        
+        private LoadAssetSuccessCallback m_LoadAssetSuccessCallback;
+        private LoadAssetFailureCallback m_LoadAssetFailureCallback;
+        List<int> aboList = new List<int>();
+        private AO ao = null;
+        private int index = 0;
+        private string name;
+        public OBJ(string name, int index,LoadAssetFailureCallback fcb,LoadAssetSuccessCallback scb)
+        {
+            this.name = name;
+            this.index = index;
+            m_LoadAssetFailureCallback = fcb;
+            m_LoadAssetSuccessCallback = scb;
+        }
+
+        public List<int> Abolist
+        {
+            get
+            {
+                return aboList;
+            }
+            set { aboList = value; }
+        }
+
+        public AO Ao
+        {
+            get { return ao; }
+            set { ao = value; }
+        }
+
+        public string getName
+        {
+            get { return name; }
+        }
+
+        public int getIndex
+        {
+            get { return index; }
+        }
     }
     
     private class initctx
@@ -60,6 +98,7 @@ public class ABM
         }
     }
     private static int ABIDX = 0;
+    private static int OBJIDX = 0;
     private static string ROOT = null;
     private static string MAINNAME = "MAIN.bundle";
     private static AssetBundleManifest MANIFEST = null;
@@ -75,7 +114,7 @@ public class ABM
     private static Dictionary<string, string[]> abo_to_loadnamt = new Dictionary<string, string[]>();
     public static Dictionary<string, List<string>> asset_to_depedencyAssets = new Dictionary<string, List<string>>();
     static Dictionary<int,ABO> loadingabo = new Dictionary<int,ABO>();
-    
+    static Dictionary<int,OBJ> obj_to_objid = new Dictionary<int, OBJ>();
     
     public static string getconfpath()
     {
