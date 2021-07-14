@@ -31,7 +31,7 @@ public class ABMNew
         public int abi = -1;
         public int refn = 1;
         public Object asset = null;
-
+        
         public AO(int abi, string name)
         {
             this.abi = abi;
@@ -47,7 +47,7 @@ public class ABMNew
         private AO ao = null;
         private int obji = -1;
         private string name;
-
+        public int refn = 1;
         public OBJ(string name, int index, LoadAssetSuccessCallback scb, LoadAssetFailureCallback fcb)
         {
             this.name = name;
@@ -91,10 +91,11 @@ public class ABMNew
     static Dictionary<string,int>abi_of_asset = new Dictionary<string, int>();
     static Dictionary<string,AO> name_to_ao = new Dictionary<string, AO>();
     static Dictionary<int ,OBJ> obji_to_obj = new Dictionary<int, OBJ>();
+    static Dictionary<string,OBJ> name_to_obj = new Dictionary<string, OBJ>();
     static Dictionary<int, AssetBundleCreateRequest> abi_to_request = new Dictionary<int, AssetBundleCreateRequest>();
     static Dictionary<string,List<string>> asset_to_depedencyAssets = new Dictionary<string, List<string>>();
-    List<AssetBundleRequest > reqlistloading = new List<AssetBundleRequest>();
-
+    static Dictionary<string,AssetBundleRequest > reqlistloadingDic = new Dictionary<string, AssetBundleRequest>();
+    
     public static string getconfpath()
     {
         var path = "";
@@ -118,7 +119,7 @@ public class ABMNew
         ABO abo = null;
         abi_to_abo.TryGetValue(abi, out abo);
         if (abo != null)
-        {    
+        {
             DEBUGPRINT("load_abo abi:"+abi);
             return abo;
         }
@@ -253,12 +254,97 @@ public class ABMNew
             name_to_ao[name] = ao;
         }
     }
-    public static T load_asset<T>(string name_) where T : Object
+    public static T load_asset<T>(string name_,List<int> abilist) where T : Object
     {
         int abi = 0;
         AO ao = null;
         var name = name_.ToLower();
         //if(name_to_ao.TryGetValue(name_))
+        if(name_to_ao.TryGetValue(name,out ao))
+        {
+            DEBUGPRINT("load_asset name:"+name+"hit");
+            ++ao.refn;
+            if (ao.asset != null)
+            {
+                return (T) ao.asset;
+            }
+            return null;
+        }
 
+        if (abi_of_asset.TryGetValue(name, out abi) == false)
+        {
+            return null;
+        }
+
+        var abo = load_abo(abi);
+        abilist.Add(abi);
+        if (abo == null)
+            return null;
+        load_depedencyAssets(name,abilist);
+        if (abo.ab != null)
+        {
+            abo.isLoad = loadType.load;
+        }
+        ao = new AO(abi,name);
+        name_to_ao[name] = ao;
+        if (abo.isLoad == loadType.load)
+        {
+            AssetBundleRequest abreq = abo.ab.LoadAssetAsync(name);
+            reqlistloadingDic.Add(name,abreq);
+        }
+        return (T)ao.asset;
+    }
+
+    static void unload_asset(AO ao)
+    {
+        DEBUGPRINT("Unloadasset Name: "+ao.name);
+        if (ao.asset != null)
+        {
+            Resources.UnloadAsset((Object)ao.asset);
+        }
+    }
+
+    static void unref_assetdepedency(AO ao)
+    {
+        List<string> depedencylist = new List<string>();
+        if (asset_to_depedencyAssets.TryGetValue(ao.name, out depedencylist))
+        {
+            AO depedencyao = null;
+            for (int i = 0; i < depedencylist.Count; i++)
+            {
+                if (name_to_ao.TryGetValue(depedencylist[i], out depedencyao))
+                {
+                    --depedencyao.refn;
+                    if (depedencyao.refn <= 0)
+                    {
+                        unload_abo(ao.abi);
+                        unref_assetdepedency(depedencyao);
+                        name_to_ao.Remove(ao.name);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void unref_asset(int instance_id)
+    {
+        OBJ obj = null;
+        if(obji_to_obj.TryGetValue(instance_id,out obj) == false)
+            return;
+        --obj.Ao.refn;
+        DEBUGPRINT("unref_asset instance id"+instance_id + "ref count:"+ obj.Ao.refn);
+        if (obj.Ao.refn <= 0)
+        {
+            unref_assetdepedency(obj.Ao);
+            unload_abo(obj.Ao.abi);
+            name_to_ao.Remove(obj.Ao.name);
+            obji_to_obj.Remove(instance_id);
+        }
+    }
+
+    static Object load_obj(string name)
+    {
+        OBJ obj = null;
+        //if(obji_to_obj.TryGetValue())
     }
 }
