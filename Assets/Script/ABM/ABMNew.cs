@@ -10,6 +10,11 @@ public class ABMNew
     public delegate void LoadAssetSuccessCallback(string assetName, Object asset, float duration, object userData);
 
     public delegate void LoadAssetFailureCallback(string assetName, string errorMessage, object userData);
+
+    public delegate void LoadAssetBundleSuccessCallback(int abi,AssetBundle ab);
+    public delegate void LoadAssetBundleFailureCallback(int abi, string erroeMessage);
+
+
     enum loadType
     {
         none = 0,
@@ -23,6 +28,24 @@ public class ABMNew
         public loadType isLoad = loadType.none;
         public AssetBundle ab = null;
         public HashSet<int> objs = new HashSet<int>();
+        private event LoadAssetBundleFailureCallback fcbs;
+        private event LoadAssetBundleSuccessCallback scbs;
+
+        public void SetCallback(LoadAssetBundleFailureCallback fcb,LoadAssetBundleSuccessCallback scb)
+        {
+            fcbs += fcb;
+            scbs += scb;
+        }
+
+        public void successcb()
+        {
+            scbs.Invoke(abi, ab);
+        }
+        public void failurecb(string errorMessage)
+        {
+            fcbs.Invoke(abi, errorMessage);
+        }
+
     }
 
     class AO
@@ -31,29 +54,45 @@ public class ABMNew
         public int abi = -1;
         public int refn = 1;
         public Object asset = null;
-        
+        public object userdata;
         public AO(int abi, string name)
         {
             this.abi = abi;
             this.name = name;
         }
+        private event LoadAssetFailureCallback fcbs;
+        private event LoadAssetSuccessCallback scbs;
+        public void SetCallBack(LoadAssetFailureCallback fcb, LoadAssetSuccessCallback scb)
+        {
+            fcbs += fcb;
+            scbs += scb;
+            if(asset != null)
+            {
+                successcb();
+            }
+        }
+
+        public void successcb()
+        {
+            scbs.Invoke(name,asset,0, userdata);
+        }
+        public void failurecb(string errorMessage)
+        {
+            fcbs.Invoke(name, errorMessage, userdata);
+        }
     }
 
     class OBJ
     {
-        private LoadAssetFailureCallback m_LoadAssetFailureCallback;
-        private LoadAssetSuccessCallback m_LoadAssetSuccessCallback;
         List<int> aboList = new List<int>();
         private AO ao = null;
         private int obji = -1;
         private string name;
         public int refn = 1;
-        public OBJ(string name, int index, LoadAssetSuccessCallback scb, LoadAssetFailureCallback fcb)
+        public OBJ(string name, int index)
         {
             this.name = name;
             this.obji = index;
-            m_LoadAssetSuccessCallback = scb;
-            m_LoadAssetFailureCallback = fcb;
         }
 
         public AO Ao
@@ -70,6 +109,13 @@ public class ABMNew
         public int getIndex
         {
             get { return obji; }
+        }
+        public void SetCallback(LoadAssetFailureCallback fcb,LoadAssetSuccessCallback scb)
+        {
+            if(ao != null)
+            {
+                ao.SetCallBack(fcb, scb);
+            }
         }
     }
 
@@ -90,6 +136,7 @@ public class ABMNew
     static Dictionary<int,ABO> abi_to_abo = new Dictionary<int, ABO>();
     static Dictionary<string,int>abi_of_asset = new Dictionary<string, int>();
     static Dictionary<string,AO> name_to_ao = new Dictionary<string, AO>();
+    static Dictionary<string, int> name_to_obji = new Dictionary<string, int>();
     static Dictionary<int ,OBJ> obji_to_obj = new Dictionary<int, OBJ>();
     static Dictionary<string,OBJ> name_to_obj = new Dictionary<string, OBJ>();
     static Dictionary<int, AssetBundleCreateRequest> abi_to_request = new Dictionary<int, AssetBundleCreateRequest>();
@@ -342,9 +389,27 @@ public class ABMNew
         }
     }
 
-    static Object load_obj(string name)
+    static void loadasset(string name,LoadAssetFailureCallback fcb,LoadAssetSuccessCallback scb)
+    {
+
+    } 
+
+
+    static void load_obj(string name,LoadAssetSuccessCallback scb,LoadAssetFailureCallback fcb)
     {
         OBJ obj = null;
+        int obji = 0;
+        if(name_to_obji.TryGetValue(name,out obji) == false)
+        {
+            obji = ++OBJIDX;
+        }
+        if(obji_to_obj.TryGetValue(obji,out obj))
+        {
+            obj.SetCallback(fcb, scb);
+            return;
+        }
+        obj = new OBJ(name, obji);
+        
         //if(obji_to_obj.TryGetValue())
     }
 }
