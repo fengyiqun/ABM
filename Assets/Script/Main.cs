@@ -76,6 +76,10 @@ public class Main : MonoBehaviour
     {
         obj = ABM.load_assetnew("assets/art/b.prefab") as GameObject;
     }
+    public void LoadDepedency()
+    {
+        ABM.load_depedencyAssets("assets/art/b.prefab");
+    }
 
     public void LoadAsset()
     {

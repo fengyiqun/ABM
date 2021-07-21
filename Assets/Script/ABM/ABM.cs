@@ -338,7 +338,7 @@ public class ABM
         return asset;
     }
 
-     static void load_depedencyAssets(string name_)
+     public static void load_depedencyAssets(string name_)
     {
         List<string> depedencyAssets = new List<string>();
         if(asset_to_depedencyAssets.TryGetValue(name_,out depedencyAssets) == false)
@@ -397,7 +397,7 @@ public class ABM
         var abo = load_abonew (abi);
         if (abo == null)
             return null;
-        load_depedencyAssets(name);
+        //load_depedencyAssets(name);
         var asset = abo.ab.LoadAsset<T>(name);
         abo.isLoad = true;
         if (asset != null)

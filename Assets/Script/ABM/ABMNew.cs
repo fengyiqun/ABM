@@ -14,6 +14,10 @@ public class ABMNew
     public delegate void LoadAssetBundleSuccessCallback(int abi,AssetBundle ab);
     public delegate void LoadAssetBundleFailureCallback(int abi, string erroeMessage);
 
+    public delegate void LoadOBJSuccessCallback();
+    public delegate void LoadOBJFailureCallback();
+
+
 
     enum loadType
     {
@@ -26,8 +30,8 @@ public class ABMNew
     {
         public int abi = -1;
         public loadType isLoad = loadType.none;
+        public AssetBundleCreateRequest abcr = null;
         public AssetBundle ab = null;
-        public HashSet<int> objs = new HashSet<int>();
         private event LoadAssetBundleFailureCallback fcbs;
         private event LoadAssetBundleSuccessCallback scbs;
 
@@ -36,7 +40,11 @@ public class ABMNew
             fcbs += fcb;
             scbs += scb;
         }
-
+        public void DeleteCallback(LoadAssetBundleFailureCallback fcb, LoadAssetBundleSuccessCallback scb)
+        {
+            fcbs -= fcb;
+            scbs -= scb;
+        }
         public void successcb()
         {
             scbs.Invoke(abi, ab);
@@ -53,8 +61,11 @@ public class ABMNew
         public string name = null;
         public int abi = -1;
         public int refn = 1;
+        public AssetBundleRequest abr = null;
         public Object asset = null;
         public object userdata;
+        HashSet<int> loadabi = new HashSet<int>();
+        public ABO abo = null;
         public AO(int abi, string name)
         {
             this.abi = abi;
@@ -66,12 +77,16 @@ public class ABMNew
         {
             fcbs += fcb;
             scbs += scb;
-            if(asset != null)
-            {
-                successcb();
-            }
         }
-
+        public void DeleteCallBack(LoadAssetFailureCallback fcb, LoadAssetSuccessCallback scb)
+        {
+            fcbs -= fcb;
+            scbs -= scb;
+        }
+        public void SetABO(ABO abo)
+        {
+            this.abo = abo;
+        }
         public void successcb()
         {
             scbs.Invoke(name,asset,0, userdata);
@@ -80,11 +95,28 @@ public class ABMNew
         {
             fcbs.Invoke(name, errorMessage, userdata);
         }
+        public AssetBundleRequest ABLoadSuccess(int abi,AssetBundle ab)
+        {
+            if (loadabi.Contains(abi))
+            {
+                loadabi.Remove(abi);
+            }
+            if (loadabi.Count <= 0)
+            {
+                abr = abo.ab.LoadAssetAsync(name);
+            }
+            return abr;
+        }
+
     }
 
     class OBJ
     {
-        List<int> aboList = new List<int>();
+
+        Dictionary<int, LoadOBJSuccessCallback> successCallbackDic = new Dictionary<int, LoadOBJSuccessCallback>();
+
+        Dictionary<int, LoadOBJFailureCallback> failureCallbackDic = new Dictionary<int, LoadOBJFailureCallback>();
+
         private AO ao = null;
         private int obji = -1;
         private string name;
@@ -110,11 +142,29 @@ public class ABMNew
         {
             get { return obji; }
         }
-        public void SetCallback(LoadAssetFailureCallback fcb,LoadAssetSuccessCallback scb)
+        public void SetCallback(LoadOBJSuccessCallback scb, LoadOBJFailureCallback fcb, int index)
         {
-            if(ao != null)
+            successCallbackDic[index] = scb;
+            failureCallbackDic[index] = fcb;
+        }
+        public void DeleteCallback(int index)
+        {
+            successCallbackDic.Remove(index);
+            failureCallbackDic.Remove(index);
+
+        }
+        public void successCallBack()
+        {
+            foreach(var value in successCallbackDic)
             {
-                ao.SetCallBack(fcb, scb);
+                value.Value();
+            }
+        }
+        public void failureCallBack()
+        {
+            foreach (var value in failureCallbackDic)
+            {
+                value.Value();
             }
         }
     }
