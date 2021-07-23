@@ -211,7 +211,7 @@ public class ABMNew
         Debug.Log(str);
     }
 
-    static ABO load_abo(int abi)
+    static ABO load_abo(int abi,LoadAssetBundleFailureCallback fcb,LoadAssetBundleSuccessCallback scb)
     {
         ABO abo = null;
         abi_to_abo.TryGetValue(abi, out abo);
@@ -227,13 +227,14 @@ public class ABMNew
         DEBUGPRINT("load_abo assetbundle path :" + path);
         var req = AssetBundle.LoadFromFileAsync(path);
         abi_to_request[abi] = req;
+        abo.abcr = req;
         abo.isLoad = loadType.loading;
         abo.abi = abi;
-        abo.ab = null;
+        abo.SetCallback(fcb, scb);
         return abo;
     }
 
-    static void unload_abo(int abi)
+    static void unload_abo(int abi,LoadAssetBundleFailureCallback fcb,LoadAssetBundleSuccessCallback scb)
     {
         ABO abo = null;
         abi_to_abo.TryGetValue(abi, out abo);
@@ -243,6 +244,7 @@ public class ABMNew
             return;
         }
         bool unload = true;
+        abo.DeleteCallback(fcb, scb);
         if(abo.isLoad == loadType.load)
         {
             foreach(var value in abi_of_asset)
@@ -334,7 +336,8 @@ public class ABMNew
             {
                 DEBUGPRINT("load abi is fail asset: " + name);
             }
-            var abo = load_abo(abi);
+            ao = new AO(abi,name);
+            var abo = load_abo(abi, ao.failurecb,ao.successcb);
             if(abo == null)
             {
                 DEBUGPRINT("load abo is Fail asset:" + name);
